@@ -1,0 +1,17 @@
+{
+    "name": "sitepilot/wp-theme",
+    "description": "WordPress theme framework by Sitepilot.",
+    "type": "library",
+    "license": "GPL-3.0-or-later",
+    "autoload": {
+        "psr-4": {
+            "Sitepilot\\WpTheme\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Nick Jansen",
+            "email": "n.jansen@sitepilot.io"
+        }
+    ]
+}
