@@ -3,6 +3,7 @@
     "description": "WordPress theme framework by Sitepilot.",
     "type": "library",
     "license": "GPL-3.0-or-later",
+    "php": "^7.4",
     "autoload": {
         "psr-4": {
             "Sitepilot\\WpTheme\\": "src/"
