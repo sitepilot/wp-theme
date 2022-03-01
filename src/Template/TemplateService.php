@@ -40,7 +40,7 @@ class TemplateService
      */
     public function post_type(): string
     {
-        return $this->app->filter('template/post_type', $this->app->namespace('tmpl', '-'));
+        return $this->app->filter('template/post_type', $this->app->namespace());
     }
 
     /**
