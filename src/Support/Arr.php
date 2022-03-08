@@ -92,4 +92,19 @@ class Arr
     {
         return array_filter($array, $callback, ARRAY_FILTER_USE_BOTH);
     }
+
+    /**
+     * Determines if an array is associative.
+     *
+     * An array is "associative" if it doesn't have sequential numerical keys beginning with zero.
+     *
+     * @param  array  $array
+     * @return bool
+     */
+    public static function is_assoc(array $array)
+    {
+        $keys = array_keys($array);
+
+        return array_keys($keys) !== $keys;
+    }
 }
