@@ -2,6 +2,7 @@
 
 namespace Sitepilot\WpTheme\Acf;
 
+use Sitepilot\WpTheme\Acf\Fields\ClassSelect;
 use Sitepilot\Framework\Support\ServiceProvider;
 
 class AcfServiceProvider extends ServiceProvider
@@ -22,6 +23,8 @@ class AcfServiceProvider extends ServiceProvider
 
         $this->add_shortcode('acf_field', 'field_shortcode');
         $this->add_shortcode('acf_option', 'option_shortcode');
+
+        $this->add_action('acf/include_field_types', 'include_field_types');
     }
 
     /**
@@ -33,10 +36,17 @@ class AcfServiceProvider extends ServiceProvider
             'key' => '',
             'default' => null,
             'prefix' => '',
-            'suffix' => ''
+            'suffix' => '',
+            'allowed_tags' => ''
         ], $atts);
 
-        return $atts['prefix'] . $this->acf->option($atts['key'], $atts['default']) . $atts['suffix'];
+        $value = $this->acf->option($atts['key'], $atts['default']);
+
+        if (!empty($atts['allowed_tags'])) {
+            $value = strip_tags($value, explode(',', $atts['allowed_tags']));
+        }
+
+        return $atts['prefix'] . $value . $atts['suffix'];
     }
 
     /**
@@ -49,9 +59,26 @@ class AcfServiceProvider extends ServiceProvider
             'default' => null,
             'post_id' => 0,
             'prefix' => '',
-            'suffix' => ''
+            'suffix' => '',
+            'allowed_tags' => ''
         ], $atts);
 
-        return $atts['prefix'] . $this->acf->field($atts['key'], $atts['default'], $atts['post_id']) . $atts['suffix'];
+        $value = $this->acf->field($atts['key'], $atts['default'], $atts['post_id']);
+
+        if (!empty($atts['allowed_tags'])) {
+            $value = strip_tags($value, explode(',', $atts['allowed_tags']));
+        }
+
+        return $atts['prefix'] . $value . $atts['suffix'];
+    }
+
+    /**
+     * Register customm ACF fields.
+     *
+     * @return void
+     */
+    public function include_field_types(): void
+    {
+        new ClassSelect();
     }
 }
