@@ -2,19 +2,22 @@
 
 namespace Sitepilot\WpTheme\Post;
 
-use Sitepilot\WpTheme\Template\TemplateService;
 use Sitepilot\Framework\Support\ServiceProvider;
+use Sitepilot\WpTheme\Element\ElementService;
 
 class PostServiceProvider extends ServiceProvider
 {
-    private TemplateService $template;
+    /**
+     * The element service instance.
+     */
+    private ElementService $element;
 
     /**
      * Bootstrap application services and hooks.
      */
-    public function boot(TemplateService $template): void
+    public function boot(ElementService $element): void
     {
-        $this->template = $template;
+        $this->element = $element;
 
         $this->add_shortcode('post_date', 'date_shortcode');
         $this->add_shortcode('post_title', 'title_shortcode');
@@ -61,7 +64,7 @@ class PostServiceProvider extends ServiceProvider
             'post_id' => 0
         ], $atts);
 
-        if ($this->template->post_type() != get_post_type()) {
+        if ($this->element->post_type() != get_post_type()) {
             return apply_filters(
                 'the_content',
                 get_the_content(null, false, $atts['post_id'])
