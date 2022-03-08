@@ -8,14 +8,9 @@ use Sitepilot\WpTheme\Support\Str;
 class AcfService
 {
     /**
-     * The cache for registered block fields.
+     * The cache for registered field groups.
      */
-    private static array $block_fields_cache = [];
-
-    /**
-     * The cache for registered theme options.
-     */
-    private static array $option_fields_cache = [];
+    private static array $field_groups_cache = [];
 
     /**
      * Determine if ACF is installed.
@@ -44,12 +39,13 @@ class AcfService
      * Get field value.
      *
      * @param mixed $default
+     * @param mixed $post
      * @return mixed
      */
-    public function field(string $key, $default = null, int $post_id = 0)
+    public function field(string $key, $default = null, $post = 0)
     {
         if (function_exists('get_field')) {
-            return get_field($key, $post_id) ?: $default;
+            return get_field($key, $post) ?: $default;
         }
 
         return null;
@@ -63,7 +59,7 @@ class AcfService
      */
     public function map_field(string $key, array $map, $default = null)
     {
-        return Arr::get($map, $this->field($key), $default);
+        return Arr::get($map, $this->field($key, $default));
     }
 
     /**
@@ -74,7 +70,7 @@ class AcfService
      */
     public function map_option(string $key, array $map, $default = null)
     {
-        return Arr::get($map, $this->option($key), $default);
+        return Arr::get($map, $this->option($key, $default));
     }
 
     /**
@@ -115,27 +111,53 @@ class AcfService
     }
 
     /**
-     * Add option page fields.
-     *
-     * @see https://www.advancedcustomfields.com/resources/register-fields-via-php/
+     * Add a field group.
      */
-    public function add_option_fields(string $page_id, string $title, array $fields, array $config = []): void
+    public function add_fields(string $namespace, array $config): void
     {
-        $fields = Arr::where($fields, function ($field) {
+        // Checks if the config is an array with only fields
+        if (empty($config['fields']) && !empty($config[0]['name'])) {
+            $config['fields'] = $config;
+            foreach (array_keys($config) as $key) {
+                if (!is_string($key)) {
+                    unset($config[$key]);
+                }
+            }
+        }
+
+        $fields = Arr::where($config['fields'] ?? [], function ($field) {
             return !empty($field['name']);
         });
 
         foreach ($fields as &$field) {
             $field = wp_parse_args($field, [
-                'key' => $page_id . '_' . $field['name'],
+                'key' => 'field_' . md5($namespace . '_' . $field['name']),
                 'label' => Str::title($field['name'])
             ]);
         }
 
+        $config['fields'] = $fields;
+
         $config = wp_parse_args($config, [
-            'key' => $page_id . '_group_' . count(static::$option_fields_cache[$page_id] ?? []),
-            'title' => $title,
-            'fields' => $fields,
+            'key' => 'group_' . md5($namespace . '_' . count(static::$field_groups_cache[$namespace] ?? [])),
+            'title' => Str::title($namespace)
+        ]);
+
+        static::$field_groups_cache[$namespace][] = $config;
+
+        add_action('acf/init', function () use ($config) {
+            acf_add_local_field_group($config);
+        });
+    }
+
+    /**
+     * Add option page field group.
+     *
+     * @see https://www.advancedcustomfields.com/resources/register-fields-via-php/
+     */
+    public function add_option_fields(string $page_id, array $config = []): void
+    {
+        $config = wp_parse_args($config, [
             'location' => [[
                 [
                     'param' => 'options_page',
@@ -145,11 +167,7 @@ class AcfService
             ]]
         ]);
 
-        static::$option_fields_cache[$page_id][] = $config;
-
-        add_action('acf/init', function () use ($config) {
-            acf_add_local_field_group($config);
-        });
+        $this->add_fields("opt_{$page_id}", $config);
     }
 
     /**
@@ -171,26 +189,13 @@ class AcfService
     }
 
     /**
-     * Add block fields.
+     * Add block field group.
      *
      * @see https://www.advancedcustomfields.com/resources/register-fields-via-php/
      */
-    public function add_block_fields(string $block_id, array $fields, array $config = []): void
+    public function add_block_fields(string $block_id, array $config = []): void
     {
-        $fields = Arr::where($fields, function ($field) {
-            return !empty($field['name']);
-        });
-
-        foreach ($fields as &$field) {
-            $field = wp_parse_args($field, [
-                'key' => $block_id . '_' . $field['name'],
-                'label' => Str::title($field['name'])
-            ]);
-        }
-
         $config = wp_parse_args($config, [
-            'key' => $block_id . '_group_' . count(static::$block_fields_cache[$block_id] ?? []),
-            'fields' => $fields,
             'location' => [[
                 [
                     'param' => 'block',
@@ -200,19 +205,55 @@ class AcfService
             ]]
         ]);
 
-        static::$block_fields_cache[$block_id][] = $config;
+        $this->add_fields("block_{$block_id}", $config);
+    }
 
-        add_action('acf/init', function () use ($config) {
-            acf_add_local_field_group($config);
-        });
+    /**
+     * Add post type field group.
+     *
+     * @see https://www.advancedcustomfields.com/resources/register-fields-via-php/
+     */
+    public function add_post_type_fields(string $post_type, array $config = []): void
+    {
+        $config = wp_parse_args($config, [
+            'location' => [[
+                [
+                    'param' => 'post_type',
+                    'operator' => '==',
+                    'value' => $post_type,
+                ]
+            ]]
+        ]);
+
+        $this->add_fields("cpt_{$post_type}", $config);
+    }
+
+    /**
+     * Add taxonomy field group.
+     *
+     * @see https://www.advancedcustomfields.com/resources/register-fields-via-php/
+     */
+    public function add_taxonomy_fields(string $taxonomy, array $config = []): void
+    {
+        $config = wp_parse_args($config, [
+            'location' => [[
+                [
+                    'param' => 'taxonomy',
+                    'operator' => '==',
+                    'value' => $taxonomy,
+                ]
+            ]]
+        ]);
+
+        $this->add_fields("tax_{$taxonomy}", $config);
     }
 
     /**
      * Get block template.
      */
-    public function block_template(string $template, array $block, array $data = []): string
+    public function block_template(string $template, array $block, array $data = [], array $classes = []): string
     {
-        $args = $this->block_template_data($block, $data);
+        $args = $this->block_template_data($block, $data, $classes);
 
         ob_start();
         get_template_part($template, $args['style'], $args);
@@ -225,14 +266,14 @@ class AcfService
     /**
      * Get block template data.
      */
-    public function block_template_data(array $block, array $merge = []): array
+    public function block_template_data(array $block, array $data = [], array $classes = []): array
     {
-        return wp_parse_args($merge, [
+        return wp_parse_args($data, [
             'block' => $block,
             'name' => str_replace('acf/', '', $block['name']),
             'class' => str_replace('acf/', '', $block['name']) . '-block',
             'style' => $this->block_style($block),
-            'attributes' => $this->block_attributes($block)
+            'attributes' => $this->block_attributes($block, $classes)
         ]);
     }
 
@@ -274,7 +315,7 @@ class AcfService
             array_push($classes, 'has-' . $block['fontSize'] . '-font-size');
         }
 
-        return "class=\"" . implode(' ', $classes) . "\" id=\"{$id}\"";
+        return "class=\"" . $this->dynamic_class($classes) . "\" id=\"{$id}\"";
     }
 
     /**
@@ -313,5 +354,19 @@ class AcfService
         }
 
         return '<InnerBlocks ' . implode(' ', $attributes) . '/>';
+    }
+
+    /**
+     * Get dynamic class string.
+     */
+    public function dynamic_class(array $classes): string
+    {
+        foreach ($classes as &$class) {
+            if (substr($class, 0, 6) == 'field:') {
+                $class = $this->field(substr($class, 6));
+            }
+        }
+
+        return implode(' ', array_filter($classes));
     }
 }
