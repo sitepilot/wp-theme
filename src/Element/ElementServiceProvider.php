@@ -50,15 +50,15 @@ class ElementServiceProvider extends ServiceProvider
      */
     public function render(?string $slug): ?string
     {
-        $args = array();
+        global $element_args;
 
         $element = get_page_by_path($slug, OBJECT, $this->element->post_type());
 
         if ($element) {
-            $args['classes'] = array_merge(['sp-element', 'sp-element-' . $slug, 'sp-element-' . $element->ID], $this->element->classes());
-            $args['content'] = apply_filters('the_content', $element->post_content);
+            $class = $this->app->namespace('element', '-');
 
-            extract($args);
+            $element_args['classes'] = array_merge([$class, "$class-{$element->ID}", "$class-$slug"], $this->element->classes());
+            $element_args['content'] = apply_filters('the_content', $element->post_content);
 
             ob_start();
             include __DIR__ . '/includes/element.php';
@@ -80,8 +80,11 @@ class ElementServiceProvider extends ServiceProvider
         $element = $this->render($this->element->template());
 
         if ($element && !is_null($this->element->template())) {
-            $template_args['classes'] = array_merge(['sp-template'], $this->element->template_classes());
+            $class = $this->app->namespace('template', '-');
+
+            $template_args['classes'] = array_merge([$class], $this->element->template_classes());
             $template_args['content'] = $element;
+
             return $this->element->template_file();
         }
 

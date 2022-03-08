@@ -48,7 +48,7 @@ class ElementService
      */
     public function post_type(): string
     {
-        return $this->app->filter('element/post_type', 'sp_elements');
+        return $this->app->filter('element/post_type', $this->app->namespace());
     }
 
     /**
