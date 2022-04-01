@@ -58,4 +58,27 @@ class ElementService
     {
         return $this->app->filter('element/file', __DIR__ . '/includes/template.php');
     }
+
+    /**
+     * Render an element.
+     */
+    public function render(?string $slug): ?string
+    {
+        global $element_args;
+
+        $element = get_page_by_path($slug, OBJECT, $this->post_type());
+
+        if ($element) {
+            $class = $this->app->namespace('element', '-');
+
+            $element_args['classes'] = array_merge([$class, "$class-{$element->ID}", "$class-$slug"], $this->classes());
+            $element_args['content'] = apply_filters('the_content', $element->post_content);
+
+            ob_start();
+            include __DIR__ . '/includes/element.php';
+            return ob_get_clean();
+        }
+
+        return null;
+    }
 }

@@ -3,7 +3,6 @@
 namespace Sitepilot\WpTheme\Element;
 
 use Sitepilot\Framework\Support\ServiceProvider;
-use Sitepilot\WpTheme\Support\Str;
 
 class ElementServiceProvider extends ServiceProvider
 {
@@ -11,6 +10,14 @@ class ElementServiceProvider extends ServiceProvider
      * The element service instance.
      */
     private ElementService $element;
+
+    /**
+     * Register application services and hooks.
+     */
+    public function register(): void
+    {
+        $this->app->alias(ElementService::class, 'element');
+    }
 
     /**
      * Bootstrap application services and hooks.
@@ -46,29 +53,6 @@ class ElementServiceProvider extends ServiceProvider
     }
 
     /**
-     * Render an element.
-     */
-    public function render(?string $slug): ?string
-    {
-        global $element_args;
-
-        $element = get_page_by_path($slug, OBJECT, $this->element->post_type());
-
-        if ($element) {
-            $class = $this->app->namespace('element', '-');
-
-            $element_args['classes'] = array_merge([$class, "$class-{$element->ID}", "$class-$slug"], $this->element->classes());
-            $element_args['content'] = apply_filters('the_content', $element->post_content);
-
-            ob_start();
-            include __DIR__ . '/includes/element.php';
-            return ob_get_clean();
-        }
-
-        return null;
-    }
-
-    /**
      * Filter the path of the current element before including it.
      *
      * @param string $template
@@ -77,7 +61,7 @@ class ElementServiceProvider extends ServiceProvider
     {
         global $template_args;
 
-        $element = $this->render($this->element->template());
+        $element = $this->element->render($this->element->template());
 
         if ($element && !is_null($this->element->template())) {
             $class = $this->app->namespace('template', '-');
