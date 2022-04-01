@@ -4,9 +4,23 @@ namespace Sitepilot\WpTheme\Acf;
 
 use Sitepilot\WpTheme\Support\Arr;
 use Sitepilot\WpTheme\Support\Str;
+use Sitepilot\Framework\Foundation\Application;
 
 class AcfService
 {
+    /**
+     * The application instance.
+     */
+    private Application $app;
+
+    /**
+     * Create a new beaver builder service instance.
+     */
+    public function __construct(Application $app)
+    {
+        $this->app = $app;
+    }
+
     /**
      * The cache for registered field groups.
      */
@@ -125,22 +139,12 @@ class AcfService
             }
         }
 
-        $fields = Arr::where($config['fields'] ?? [], function ($field) {
-            return !empty($field['name']);
-        });
-
-        foreach ($fields as &$field) {
-            $field = wp_parse_args($field, [
-                'key' => 'field_' . md5($namespace . '_' . $field['name']),
-                'label' => Str::title($field['name'])
-            ]);
-        }
-
-        $config['fields'] = $fields;
+        $config['fields'] = $this->parse_fields($namespace, $config['fields'] ?? []);
 
         $config = wp_parse_args($config, [
             'key' => 'group_' . md5($namespace . '_' . count(static::$field_groups_cache[$namespace] ?? [])),
-            'title' => Str::title($namespace)
+            'title' => Str::title($namespace),
+            'position' => 'normal'
         ]);
 
         static::$field_groups_cache[$namespace][] = $config;
@@ -148,6 +152,26 @@ class AcfService
         add_action('acf/init', function () use ($config) {
             acf_add_local_field_group($config);
         });
+    }
+
+    private function parse_fields(string $namespace, array $fields)
+    {
+        $fields = Arr::where($fields ?? [], function ($field) {
+            return !empty($field['name']);
+        });
+
+        foreach ($fields as &$field) {
+            if (!empty($field['sub_fields'])) {
+                $field['sub_fields'] = $this->parse_fields($namespace, $field['sub_fields']);
+            }
+
+            $field = wp_parse_args($field, [
+                'key' => 'field_' . md5($namespace . '_' . $field['name']),
+                'label' => Str::title($field['name'])
+            ]);
+        }
+
+        return $fields;
     }
 
     /**
@@ -255,12 +279,7 @@ class AcfService
     {
         $args = $this->block_template_data($block, $data, $classes);
 
-        ob_start();
-        get_template_part($template, $args['style'], $args);
-        $template = ob_get_contents();
-        ob_end_clean();
-
-        return $template;
+        return $this->app->template($template, $args['style'], $args);
     }
 
     /**
@@ -319,20 +338,6 @@ class AcfService
     }
 
     /**
-     * Get block style.
-     */
-    public function block_style(array $block): string
-    {
-        $match = array();
-
-        if (preg_match('/is-style-[a-zA-Z0-9_-]*/', $block['className'] ?? '', $match)) {
-            return str_replace(['is-style-sp-', 'is-style-'], '', reset($match));
-        }
-
-        return '';
-    }
-
-    /**
      * Get ACF inner blocks HTML.
      *
      * @see https://www.advancedcustomfields.com/resources/acf_register_block_type/
@@ -368,5 +373,39 @@ class AcfService
         }
 
         return implode(' ', array_filter($classes));
+    }
+
+    /**
+     * Get block style without prefix.
+     */
+    public function block_style(array $block): string
+    {
+        $match = array();
+
+        if (preg_match('/is-style-[a-zA-Z0-9_-]*/', $block['className'] ?? '', $match)) {
+            return str_replace(['is-style-sp-', 'is-style-'], '', reset($match));
+        }
+
+        return '';
+    }
+
+    /**
+     * Get block style class.
+     */
+    public function block_style_class(array $block, array $classes): array
+    {
+        $keys = array();
+
+        foreach ($classes as $item) {
+            foreach (array_keys($item) as $key) {
+                if (!in_array($key, $keys)) $keys[] = $key;
+            }
+        }
+
+        foreach ($keys as $key) {
+            $return[$key] =  implode(" ", $classes[$this->block_style($block)][$key] ?? $classes['default'][$key] ?? []);
+        }
+
+        return $return;
     }
 }

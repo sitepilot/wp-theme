@@ -10,6 +10,14 @@ class AcfServiceProvider extends ServiceProvider
     private AcfService $acf;
 
     /**
+     * Register application services and hooks.
+     */
+    public function register(): void
+    {
+        $this->app->alias(AcfService::class, 'acf');
+    }
+
+    /**
      * Bootstrap application services and hooks.
      */
     public function boot(AcfService $acf): void
