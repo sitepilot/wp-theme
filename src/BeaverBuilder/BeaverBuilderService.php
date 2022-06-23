@@ -12,7 +12,7 @@ class BeaverBuilderService
     private Application $app;
 
     /**
-     * Create a new beaver builder service instance.
+     * Create a new Beaver Builder service instance.
      */
     public function __construct(Application $app)
     {

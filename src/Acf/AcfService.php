@@ -14,17 +14,17 @@ class AcfService
     private Application $app;
 
     /**
-     * Create a new beaver builder service instance.
+     * The cache for registered field groups.
+     */
+    private static array $field_groups_cache = [];
+
+    /**
+     * Create a new ACF service instance.
      */
     public function __construct(Application $app)
     {
         $this->app = $app;
     }
-
-    /**
-     * The cache for registered field groups.
-     */
-    private static array $field_groups_cache = [];
 
     /**
      * Determine if ACF is installed.
