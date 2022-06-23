@@ -72,7 +72,7 @@ class ElementService
             $class = $this->app->namespace('element', '-');
 
             $element_args['classes'] = array_merge([$class, "$class-{$element->ID}", "$class-$slug"], $this->classes());
-            $element_args['content'] = apply_filters('the_content', $element->post_content);
+            $element_args['content'] = do_shortcode(do_blocks($element->post_content));
 
             ob_start();
             include __DIR__ . '/includes/element.php';
